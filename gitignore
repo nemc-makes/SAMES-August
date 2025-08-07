@@ -1,0 +1,14 @@
+# Byte‐compiled
+__pycache__/
+*.py[cod]
+
+# IDE settings
+.idea/
+.vscode/
+
+# Data inputs / outputs
+Data Input/
+schedules/
+
+# Environment files
+.env
