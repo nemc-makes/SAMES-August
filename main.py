@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import argparse
 import pandas as pd
 import math
 from datetime import datetime
@@ -12,11 +13,14 @@ from solver import solve_and_extract
 from exporter import export_schedule
 
 # --- CONFIG: Input/Output File Paths --------------------------------
-MPP_FILE        = "Data Input/MPP Data 2 Private Offices.csv"
-BOM_FILE        = "Data Input/20250721_PO_Rebuild Components BOM.csv"
-SLICED_FILE     = "Data Input/Sliced Build Generated.xlsx"
-# Changed path for generated_jobs.csv to a specific OneDrive folder
-JOBS_OUTPUT_CSV = r"C:\Users\NCARRE\OneDrive - HITT Contracting Inc\R&D Projects Team - 004. 3D Printed Furniture (active)\09. Bay 4\08. MES\Active PYTHON\Schedule Data Output\generated_jobs.csv"
+# NOTE: These paths are relative to the project root.
+INPUT_DIR = "Data Input"
+OUTPUT_DIR = "schedules"
+
+MPP_FILE        = os.path.join(INPUT_DIR, "MPP Data 2 Private Offices.csv")
+BOM_FILE        = os.path.join(INPUT_DIR, "20250721_PO_Rebuild Components BOM.csv")
+SLICED_FILE     = os.path.join(INPUT_DIR, "Sliced Build Generated.xlsx")
+JOBS_OUTPUT_CSV = os.path.join(OUTPUT_DIR, "generated_jobs.csv")
 # --------------------------------------------------------------------
 
 # --- ETL: build sliced-build sheet from BOM + MPP -----------------
@@ -120,63 +124,61 @@ def build_sliced_build_ID(mpp_path: str, bom_path: str, out_path: str):
 
 
 def main():
+    # --- Pre-flight Checks ---
+    for f in [MPP_FILE, BOM_FILE]:
+        if not os.path.exists(f):
+            print(f"❌ Error: Required input file not found at '{f}'. Halting execution.")
+            return
+
     # Step 1: Build sliced-build sheet
+    print(f"Building sliced build sheet from {MPP_FILE} and {BOM_FILE}...")
     build_sliced_build_ID(MPP_FILE, BOM_FILE, SLICED_FILE)
 
+    # --- Post-build Check ---
+    if not os.path.exists(SLICED_FILE):
+        print(f"❌ Error: Sliced build file was not created at '{SLICED_FILE}'. Halting execution.")
+        return
+
     # Step 2: Generate jobs from sliced sheet
+    print(f"Generating jobs from {SLICED_FILE}...")
     printers = get_printers()
     jobs = generate_jobs_from_excel(SLICED_FILE) 
     
-    # === NEW ORDER: Get user parameters before using shift_start_hour ===
-    print("\n🧠 Running Batched Operator-Aware Scheduling") 
+    # === Setup command-line argument parsing ===
+    parser = argparse.ArgumentParser(description="Run the MES scheduling system.")
+    parser.add_argument(
+        '--start-date',
+        type=str,
+        default=datetime.now().strftime("%Y-%m-%d"),
+        help='The start date for the schedule in YYYY-MM-DD format. Defaults to today.'
+    )
+    parser.add_argument('--shift-start-hour', type=int, default=8, help='The hour the shift starts (e.g., 8 for 8:00 AM).')
+    parser.add_argument('--shift-length', type=int, default=12, help='The length of a single shift in hours.')
+    parser.add_argument('--stagger', type=int, default=30, help="Minutes apart for finishes to be considered 'too close'.")
+    parser.add_argument('--penalty', type=int, default=5, help='Penalty value for close finishes on different racks.')
+    parser.add_argument('--buffer', type=int, default=0, help='Fixed gap in minutes between jobs.')
+    parser.add_argument('--debug', action='store_true', help='Enable debug output.')
     
+    args = parser.parse_args()
 
-    schedule_start_date_str = ""
-    while True:
-        schedule_start_date_str = input("📅 Enter desired schedule start date (YYYY-MM-DD): ").strip()
-        try:
-            schedule_start_date = datetime.strptime(schedule_start_date_str, "%Y-%m-%d").replace(hour=0, minute=0, second=0, microsecond=0)
-            break 
-        except ValueError:
-            print("❌ Invalid date format. Please use YYYY-MM-DD (e.g., 2025-07-28).")
-
-
+    # === Process arguments and set up parameters ===
+    print("\n🧠 Running Batched Operator-Aware Scheduling with provided parameters...")
     try:
-        shift_start_hour = int(input("🕗 Shift starts at what hour? (e.g. 8 for 08:00): "))
+        schedule_start_date = datetime.strptime(args.start_date, "%Y-%m-%d").replace(hour=0, minute=0, second=0, microsecond=0)
     except ValueError:
-        shift_start_hour = 8
-        print("Using default: 8:00 AM")
+        print(f"❌ Invalid date format for --start-date: '{args.start_date}'. Please use YYYY-MM-DD. Exiting.")
+        return
 
-    try:
-        shift_length_hours = int(input("⏲️  Shift length in hours? (e.g. 12): "))
-    except ValueError:
-        shift_length_hours = 12
-        print("Using default: 12 hours")
+    shift_start_hour = args.shift_start_hour
+    shift_length_hours = args.shift_length
+    stagger_minutes = args.stagger
+    penalty_value = args.penalty
+    job_buffer_minutes = args.buffer
+    debug = args.debug
 
     shift_start = shift_start_hour * 60
     shift_length = shift_length_hours * 60
-
-    try:
-        stagger_minutes = int(input("🔧 How many minutes apart is 'too close together' for finishes? (e.g. 15): "))
-    except ValueError:
-        stagger_minutes = 30
-        print("Using default: 30 minutes")
-
-    try:
-        penalty_value = int(input("⚠️  Penalty for close finishes on different racks? (e.g. 2): "))
-    except ValueError:
-        penalty_value = 5
-        print("Using default: 5")
-
-    # NEW: Get job buffer minutes from user
-    try:
-        job_buffer_minutes = int(input("⏳ Fixed gap between jobs (minutes)? (e.g., 5 or 10): "))
-    except ValueError:
-        job_buffer_minutes = 0 # Default to 0 minutes if invalid input
-        print("Using default fixed gap: 0 minutes")
-
-    debug = input("🔍 Show debug output? (y/N): ").strip().lower() == "y"
-    # === END user parameter inputs ===
+    # === End parameter setup ===
 
     # Persist generated jobs using export_schedule for consistency and OneDrive sync
     # Pass output_dir for the specific subfolder
