@@ -60,4 +60,3 @@ def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, sched
     # === Save to local schedules folder ===
     local_path = os.path.join(output_dir, filename)
     export_df.to_csv(local_path, index=False)
-    print(f"✅ Exported to local path: {local_path}")

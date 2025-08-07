@@ -23,6 +23,7 @@ SLICED_FILE     = os.path.join(INPUT_DIR, "Sliced Build Generated.xlsx")
 JOBS_OUTPUT_CSV = os.path.join(OUTPUT_DIR, "generated_jobs.csv")
 # --------------------------------------------------------------------
 
+
 # --- ETL: build sliced-build sheet from BOM + MPP -----------------
 def build_sliced_build_ID(mpp_path: str, bom_path: str, out_path: str):
     df_mpp = pd.read_csv(mpp_path, parse_dates=['Overall_Due_Date'])
@@ -133,6 +134,11 @@ def main():
     # Step 1: Build sliced-build sheet
     print(f"Building sliced build sheet from {MPP_FILE} and {BOM_FILE}...")
     build_sliced_build_ID(MPP_FILE, BOM_FILE, SLICED_FILE)
+    
+    # --- Post-build Check ---
+    if not os.path.exists(SLICED_FILE):
+        print(f"❌ Error: Sliced build file was not created at '{SLICED_FILE}'. Halting execution.")
+        return
 
     # --- Post-build Check ---
     if not os.path.exists(SLICED_FILE):
@@ -143,8 +149,6 @@ def main():
     print(f"Generating jobs from {SLICED_FILE}...")
     printers = get_printers()
     jobs = generate_jobs_from_excel(SLICED_FILE) 
-    
-    # === Setup command-line argument parsing ===
     parser = argparse.ArgumentParser(description="Run the MES scheduling system.")
     parser.add_argument(
         '--start-date',
@@ -160,22 +164,13 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug output.')
     
     args = parser.parse_args()
-
-    # === Process arguments and set up parameters ===
-    print("\n🧠 Running Batched Operator-Aware Scheduling with provided parameters...")
-    try:
-        schedule_start_date = datetime.strptime(args.start_date, "%Y-%m-%d").replace(hour=0, minute=0, second=0, microsecond=0)
-    except ValueError:
-        print(f"❌ Invalid date format for --start-date: '{args.start_date}'. Please use YYYY-MM-DD. Exiting.")
-        return
-
     shift_start_hour = args.shift_start_hour
     shift_length_hours = args.shift_length
     stagger_minutes = args.stagger
     penalty_value = args.penalty
     job_buffer_minutes = args.buffer
     debug = args.debug
-
+    
     shift_start = shift_start_hour * 60
     shift_length = shift_length_hours * 60
     # === End parameter setup ===

@@ -71,7 +71,7 @@ def main():
     parser.add_argument('--bom', type=str, default=BOM_FILE, help=f'Path to the BOM data CSV file. Default: {BOM_FILE}')
     parser.add_argument('--sliced-out', type=str, default=SLICED_FILE, help=f'Path for the output sliced build Excel file. Default: {SLICED_FILE}')
     parser.add_argument('--jobs-out', type=str, default=JOBS_OUTPUT_CSV, help=f'Path for the output jobs CSV file. Default: {JOBS_OUTPUT_CSV}')
-
+    
     args = parser.parse_args()
 
     # --- Pre-flight Checks ---
