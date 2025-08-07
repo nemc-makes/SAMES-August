@@ -8,9 +8,6 @@ from printerconfig import get_printers
 def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, schedule_start_date=None): 
     os.makedirs(output_dir, exist_ok=True)
 
-    # OneDrive path for cloud sync
-    onedrive_path = r"C:\Users\NCARRE\OneDrive - HITT Contracting Inc\R&D Projects Team - 004. 3D Printed Furniture (active)\09. Bay 4\08. MES\Active PYTHON\Schedule Data Output"
-
     # Maps for printer name and rack
     printers = get_printers()
     printer_rack_map = {pid: p['rack'] for pid, p in printers.items()}
@@ -60,17 +57,8 @@ def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, sched
     filename = f"{label.replace(' ', '_').lower()}_for_{schedule_md}_created_{creation_timestamp_full}.csv"
     # --- END NEW FILENAME LOGIC ---
 
-
     # === Save to local schedules folder ===
     local_path = os.path.join(output_dir, filename)
     export_df.to_csv(local_path, index=False)
     print(f"✅ Exported to local path: {local_path}")
 
-    # === Save to OneDrive ===
-    try:
-        os.makedirs(onedrive_path, exist_ok=True)
-        onedrive_full_path = os.path.join(onedrive_path, filename)
-        export_df.to_csv(onedrive_full_path, index=False)
-        print(f"☁️  Also saved to OneDrive: {onedrive_full_path}")
-    except Exception as e:
-        print(f"⚠️  Could not save to OneDrive: {e}")
