@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 from printerconfig import get_printers
 
-def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, schedule_start_date=None): 
+def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, schedule_start_date=None):
     os.makedirs(output_dir, exist_ok=True)
 
     # Maps for printer name and rack
@@ -24,11 +24,11 @@ def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, sched
     shift_start_time = base_date + timedelta(hours=shift_start_hour)
 
     # Add derived columns
-    if 'printer' in df.columns: 
+    if 'printer' in df.columns:
         df["printer_name"] = df["printer"].map(printer_name_map)
         df["rack"] = df["printer"].map(printer_rack_map)
 
-    if 'start' in df.columns: 
+    if 'start' in df.columns:
         df["start_datetime"] = df["start"].apply(lambda m: base_date + timedelta(minutes=m))
         df["end_datetime"] = df["end"].apply(lambda m: base_date + timedelta(minutes=m))
 
@@ -41,8 +41,8 @@ def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, sched
         "printer", "printer_name", "rack",
         "start", "end", "start_datetime", "end_datetime",
         "objective",
-        "machine_model", 
-        "alpha_quantity_on_plate" 
+        "machine_model",
+        "alpha_quantity_on_plate"
     ]
     actual_export_cols = [col for col in export_cols if col in df.columns]
     export_df = df[actual_export_cols]
@@ -51,7 +51,7 @@ def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, sched
     # Extract month and day from schedule_start_date (base_date) for the "for_MM-DD" part
     schedule_md = base_date.strftime("%m-%d")
     # Extract current date AND TIME (hour, minute, second) for creation timestamp to ensure uniqueness
-    creation_timestamp_full = datetime.now().strftime("%m-%d-%y_%H-%M-%S") 
+    creation_timestamp_full = datetime.now().strftime("%m-%d-%y_%H-%M-%S")
 
     # Construct the new filename
     filename = f"{label.replace(' ', '_').lower()}_for_{schedule_md}_created_{creation_timestamp_full}.csv"
@@ -60,5 +60,3 @@ def export_schedule(df, label, output_dir="schedules", shift_start_hour=8, sched
     # === Save to local schedules folder ===
     local_path = os.path.join(output_dir, filename)
     export_df.to_csv(local_path, index=False)
-    print(f"✅ Exported to local path: {local_path}")
-

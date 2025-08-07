@@ -80,11 +80,10 @@ def main():
             print(f"❌ Error: Required input file not found at '{f}'. Halting execution.")
             return
 
-
     # Step 1: build the sliced-build file
     print(f"Building sliced build sheet from {args.mpp} and {args.bom}...")
     build_sliced_build_ID(args.mpp, args.bom, args.sliced_out)
-    
+
     # Step 2: feed that file into your existing generator
     jobs = generate_jobs_from_excel(args.sliced_out)
 
@@ -97,13 +96,7 @@ def main():
             writer = csv.DictWriter(f, fieldnames=jobs[0].keys())
             writer.writeheader()
             writer.writerows(jobs)
-            import csv
-            writer = csv.DictWriter(f, fieldnames=jobs[0].keys())
-            writer.writeheader()
-            writer.writerows(jobs)
         print(f"✅ {len(jobs)} jobs written to {args.jobs_out}")
-
 
 if __name__ == "__main__":
     main()
-

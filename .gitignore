@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+
+# Data and output files
+# It's better to track data schemas, not the data itself.
+# These are added to prevent accidental commits of potentially large or sensitive data.
+/Data Input/
+/schedules/
+*.csv
+*.xlsx
+
+# OS-specific
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/

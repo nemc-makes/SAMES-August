@@ -11,7 +11,7 @@ def compatible_printers(printers, material, technology, machine_model): # Add ma
            spec['model'].strip() == machine_model.strip() # Add machine_model check
     ]
 
-def define_job_variables(model, jobs, printers, horizon, printer_rack_id, shift_start):
+def define_job_variables(model, jobs, printers, horizon, printer_rack_id, shift_start, job_buffer_minutes=0):
     start_vars = {}
     end_vars = {}
     assigned_printer_vars = {}
@@ -20,7 +20,8 @@ def define_job_variables(model, jobs, printers, horizon, printer_rack_id, shift_
     rack_vars = {}
 
     for jid, job in enumerate(jobs):
-        duration = job['duration']
+        # Add the global buffer to the duration for scheduling purposes.
+        duration = job['duration'] + job_buffer_minutes
         
         # Pass machine_model from job data to compatible_printers
         valid_pids = compatible_printers(
@@ -142,8 +143,12 @@ def build_model(printers, jobs, objective_type="minimize_makespan_and_printers",
         print(f"--------------------------------------------")
 
 
+    job_buffer_minutes = user_parameters.get("job_buffer_minutes", 0)
+    if debug and job_buffer_minutes > 0:
+        print(f"🛠️  Applying a buffer of {job_buffer_minutes} minutes between jobs.")
+
     start_vars, end_vars, assigned_printer_vars, presence_literals, printer_intervals, rack_vars = define_job_variables(
-        model, jobs, printers, horizon, printer_rack_id, shift_start
+        model, jobs, printers, horizon, printer_rack_id, shift_start, job_buffer_minutes
     )
 
     add_no_overlap_constraints(model, printer_intervals)
@@ -197,8 +202,21 @@ def build_model(printers, jobs, objective_type="minimize_makespan_and_printers",
     model.AddMaxEquality(max_job_count, list(printer_job_counts.values()))
 
     load_penalty_weight = 30
+
+    # NOTE: end_vars from define_job_variables now includes the buffer time.
+    # To get the true makespan for the objective function, we must calculate it
+    # from the start time and the original, non-buffered job duration.
     makespan = model.NewIntVar(0, horizon, 'makespan')
-    model.AddMaxEquality(makespan, list(end_vars.values()))
+    true_end_times = []
+    for jid, job in enumerate(jobs):
+        true_end = model.NewIntVar(0, horizon, f"true_end_{jid}")
+        model.Add(true_end == start_vars[jid] + job['duration'])
+        true_end_times.append(true_end)
+
+    if not true_end_times: # Handle case where there are no jobs
+        model.Add(makespan == 0)
+    else:
+        model.AddMaxEquality(makespan, true_end_times)
 
     total_start_time = model.NewIntVar(0, horizon * len(jobs), "total_start_time")
     model.Add(total_start_time == sum(start_vars.values()))

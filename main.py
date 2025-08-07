@@ -140,12 +140,15 @@ def main():
         print(f"❌ Error: Sliced build file was not created at '{SLICED_FILE}'. Halting execution.")
         return
 
+    # --- Post-build Check ---
+    if not os.path.exists(SLICED_FILE):
+        print(f"❌ Error: Sliced build file was not created at '{SLICED_FILE}'. Halting execution.")
+        return
+
     # Step 2: Generate jobs from sliced sheet
     print(f"Generating jobs from {SLICED_FILE}...")
     printers = get_printers()
     jobs = generate_jobs_from_excel(SLICED_FILE) 
-
-     # === Setup command-line argument parsing ===
     parser = argparse.ArgumentParser(description="Run the MES scheduling system.")
     parser.add_argument(
         '--start-date',
@@ -161,15 +164,6 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug output.')
     
     args = parser.parse_args()
-
-    # === Process arguments and set up parameters ===
-    print("\n🧠 Running Batched Operator-Aware Scheduling with provided parameters...")
-    try:
-        schedule_start_date = datetime.strptime(args.start_date, "%Y-%m-%d").replace(hour=0, minute=0, second=0, microsecond=0)
-    except ValueError:
-        print(f"❌ Invalid date format for --start-date: '{args.start_date}'. Please use YYYY-MM-DD. Exiting.")
-        return
-
     shift_start_hour = args.shift_start_hour
     shift_length_hours = args.shift_length
     stagger_minutes = args.stagger
